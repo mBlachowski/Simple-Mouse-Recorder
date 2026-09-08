@@ -13,6 +13,7 @@ Simple Mouse Recorder is a lightweight tool for recording and replaying mouse mo
 
 # Planned Features
 - Schedule replays for a specific date and time
+- Dynamic translation
 ## License
 
 This software is licensed under the [MIT](https://choosealicense.com/licenses/mit/)

@@ -11,13 +11,12 @@ class Settings(object):
             'key_bindings': {'start_recording': '','stop_recording': ''}}
 
         self.user_prefs:dict = self.load_settings()
-
         if not self.is_settings_loaded():
             from PySide6.QtWidgets import QMessageBox
             QMessageBox.warning(None, 'Load error',
                                     'Error while loading user_prefs.json. Loading default settings.')
             self.user_prefs = self.default_settings
-            self.save_settings()
+            self.save_settings(self.user_prefs)
 
     def get_all_settings(self):
         return self.user_prefs
@@ -35,8 +34,9 @@ class Settings(object):
             return {}
 
 
-    def save_settings(self):
-        config_json = json.dumps(self.user_prefs)
+    def save_settings(self, data: dict) -> None:
+        config_json = json.dumps(data)
+        print(data)
         with open('user_prefs.json', 'w') as config_file:
             config_file.write(config_json)
 
