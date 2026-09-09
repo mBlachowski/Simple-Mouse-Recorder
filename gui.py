@@ -1,6 +1,6 @@
 from PySide6.QtCore import Qt, QTranslator, QLocale
 from PySide6.QtGui import QActionGroup
-from PySide6.QtWidgets import (QMainWindow, QLabel, QMessageBox, QApplication)
+from PySide6.QtWidgets import QMainWindow, QLabel, QMessageBox, QApplication
 
 import settings as config
 
@@ -12,7 +12,7 @@ class MainWindow(QMainWindow):
         self.app = app
         self.settings = config.Settings()
         self.user_prefs = self.settings.get_all_settings()
-        self.settings_window = None
+        self.keys_window = None
         self.setWindowTitle('Mouse recorder')
         self.setFixedSize(300,200)
 
@@ -77,8 +77,10 @@ class MainWindow(QMainWindow):
         sos = settings.addAction(self.tr('Save recording on stop'))
         sos.setCheckable(True)
         sos.setChecked(self.user_prefs['general']['save_on_stop'])
+        sos.triggered.connect(self.save_on_stop)
 
-        settings.addAction(self.tr('Key bindings'))
+        key_b = settings.addAction(self.tr('Key bindings'))
+        key_b.triggered.connect(self.show_keybindings_window)
 
         info = menubar.addAction(self.tr('About'))
         info.triggered.connect(lambda: QMessageBox.information(self,'About',
@@ -109,35 +111,31 @@ class MainWindow(QMainWindow):
             self.settings.save_settings(self.user_prefs)
         QMessageBox.information(self,self.tr('Language changed'),self.tr('Restart application to apply changes.'))
 
-    #def show_settings(self):
-    #    if self.settings_window is None:
-    #        self.settings_window = SettingsWindow()
+    def save_on_stop(self):
+        self.user_prefs['general']['save_on_stop'] = False
+        self.settings.save_settings(self.user_prefs)
 
-    #        self.settings_window.show()
+    def show_keybindings_window(self):
+        if not self.keys_window:
+            self.keys_window = KeyConfigWindow(self)
+            self.keys_window.destroyed.connect(self._clear_key_window_reference)
+            # X position = keybind window initial x pos + main window width + 10px padding
+            x_pos = self.keys_window.geometry().x() + (self.geometry().width() + 10)
+            y_pos = self.keys_window.geometry().y()
+            self.keys_window.setGeometry(x_pos, y_pos, self.keys_window.geometry().width(),
+                                         self.keys_window.geometry().height()) # Set keybind window position
+            self.keys_window.show()
+
+    def _clear_key_window_reference(self):
+        self.keys_window = None
 
 
-#class SettingsWindow(QMainWindow):
-#    def __init__(self):
-#        super().__init__()
-#        self.setWindowTitle('Settings')
-#        self.setFixedSize(640, 480)
-#        self.setWindowFlag(Qt.WindowType.SubWindow)
-#
-#        container = QWidget()
-#        self.setCentralWidget(container)
-#        layout = QHBoxLayout(container)
-#
-#
-#        group_sys_start = QGroupBox()
-#        group_sys_start.setTitle('Open on system start')
-#        group_theme = QGroupBox()
-#        group_theme.setTitle('Theme')
-#        group_record_behavior = QGroupBox()
-#        group_record_behavior.setTitle('Recorder behavior')
-#        group_keys = QGroupBox()
-#        group_keys.setTitle('Key bindings')
-#
-#        layout.addWidget(group_sys_start)
-#        layout.addWidget(group_theme)
-#        layout.addWidget(group_record_behavior)
-#        layout.addWidget(group_keys)
+class KeyConfigWindow(QMainWindow):
+    def __init__(self, parent = None):
+        super().__init__(parent, Qt.WindowType.Window)
+        self.parent = parent
+        self.setWindowTitle('Settings')
+        self.setFixedSize(300, 200)
+        self.show()
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+
