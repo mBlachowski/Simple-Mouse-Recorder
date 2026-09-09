@@ -1,6 +1,7 @@
 from PySide6.QtCore import Qt, QTranslator, QLocale
 from PySide6.QtGui import QActionGroup
-from PySide6.QtWidgets import QMainWindow, QLabel, QMessageBox, QApplication
+from PySide6.QtWidgets import (QMainWindow, QLabel, QMessageBox, QApplication, QHBoxLayout,
+                               QVBoxLayout, QPushButton, QTextEdit, QWidget)
 
 import settings as config
 
@@ -83,9 +84,8 @@ class MainWindow(QMainWindow):
         key_b.triggered.connect(self.show_keybindings_window)
 
         info = menubar.addAction(self.tr('About'))
-        info.triggered.connect(lambda: QMessageBox.information(self,'About',
-                                                               'Simple Mouse Recorder created by Michał Blachowski.'
-                                                               '\nVersion: 1.0\nUnder MIT license'))
+        info.triggered.connect(lambda: QMessageBox.information(self,self.tr('About'),
+                        'Simple Mouse Recorder created by Michał Blachowski.\nVersion: 1.0\nUnder MIT license'))
 
         self.apply_theme(save_prefs=False)
         self.show()
@@ -117,7 +117,7 @@ class MainWindow(QMainWindow):
 
     def show_keybindings_window(self):
         if not self.keys_window:
-            self.keys_window = KeyConfigWindow(self)
+            self.keys_window = KeyConfigWindow(self, self.user_prefs)
             self.keys_window.destroyed.connect(self._clear_key_window_reference)
             # X position = keybind window initial x pos + main window width + 10px padding
             x_pos = self.keys_window.geometry().x() + (self.geometry().width() + 10)
@@ -131,11 +131,34 @@ class MainWindow(QMainWindow):
 
 
 class KeyConfigWindow(QMainWindow):
-    def __init__(self, parent = None):
+    def __init__(self, parent, user_prefs:dict):
         super().__init__(parent, Qt.WindowType.Window)
         self.parent = parent
-        self.setWindowTitle('Settings')
+        self.setWindowTitle('Key bindings')
         self.setFixedSize(300, 200)
         self.show()
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
+        container = QWidget()
+        self.setCentralWidget(container)
+        main_vbox = QVBoxLayout(container)
+
+        starthbox = QHBoxLayout()
+        stophbox = QHBoxLayout()
+
+        start_keys_label = QLabel(self)
+        start_keys_label.setText(f'Start Recording:{user_prefs['key_bindings']['start_recording']}')
+        change_start_button = QPushButton(self)
+        change_start_button.setText('Change')
+        starthbox.addWidget(start_keys_label)
+        starthbox.addWidget(change_start_button)
+
+        stop_key_label = QLabel(self)
+        stop_key_label.setText(f'Stop Recording:{user_prefs['key_bindings']['stop_recording']}')
+        change_stop_key_button = QPushButton(self)
+        change_stop_key_button.setText('Change')
+        stophbox.addWidget(stop_key_label)
+        stophbox.addWidget(change_stop_key_button)
+
+        main_vbox.addLayout(starthbox)
+        main_vbox.addLayout(stophbox)
