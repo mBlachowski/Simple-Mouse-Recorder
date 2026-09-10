@@ -1,10 +1,9 @@
-from unittest import signals
-
-import keyboard
 import threading
 
-from PySide6 import QtCore
-from PySide6.QtCore import Qt, QTranslator, QLocale, Signal
+import keyboard
+import mouse
+
+from PySide6.QtCore import Qt, QTranslator, QLocale
 from PySide6.QtGui import QActionGroup
 from PySide6.QtWidgets import (QMainWindow, QLabel, QMessageBox, QApplication, QHBoxLayout,
                                QVBoxLayout, QPushButton, QWidget)

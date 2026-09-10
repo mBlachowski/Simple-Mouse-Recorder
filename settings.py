@@ -1,5 +1,5 @@
 import json
-
+from PySide6.QtWidgets import QMessageBox
 
 class Settings(object):
     def __init__(self):
@@ -10,12 +10,6 @@ class Settings(object):
             'key_bindings': {'start_recording': 'ctrl+a', 'stop_recording': 'ctrl+s'}}
 
         self.user_prefs: dict = self.load_settings()
-        if not self.is_settings_loaded():
-            from PySide6.QtWidgets import QMessageBox
-            QMessageBox.warning(None, 'Load error',
-                                'Error while loading user_prefs.json. Loading default settings.')
-            self.user_prefs = self.default_settings
-            self.save_settings(self.user_prefs)
 
     def get_all_settings(self):
         return self.user_prefs
@@ -26,11 +20,15 @@ class Settings(object):
                 data = json.load(config_file)
                 return data
         except FileNotFoundError:
-            print('Error while loading user_prefs.json. No such file or directory.')
-            return {}
+            error_reason:str = 'user_prefs.json not found'
+            QMessageBox.warning(None,'Error', f'Error loading user_prefs.json. {error_reason}. '
+                                         f'Loading default settings.)')
+            return self.default_settings
         except json.decoder.JSONDecodeError:
-            print('Error while loading user_prefs.json. Json decode error.')
-            return {}
+            error_reason:str = 'Error loading user_prefs.json. Json decode error.'
+            QMessageBox.warning(None, 'Error', f'Error loading user_prefs.json. {error_reason}. '
+                                               f'Loading default settings.)')
+            return self.default_settings
 
     def save_settings(self, data: dict) -> None:
         config_json = json.dumps(data)
@@ -41,8 +39,9 @@ class Settings(object):
     def get_default_settings(self) -> dict:
         return self.default_settings
 
-    def is_settings_loaded(self) -> bool:
-        if not self.user_prefs:
+    @staticmethod
+    def is_settings_loaded(prefs:dict) -> bool:
+        if not prefs:
             return False
         else:
             return True
