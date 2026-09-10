@@ -176,7 +176,6 @@ class KeyConfigWindow(QMainWindow):
 
         self.stop_keys_label = QLabel(self)
         self.stop_keys_label.setText('Stop Recording:'+self.user_prefs['key_bindings']['stop_recording'])
-        self.stop_keys_label.setFixedWidth(100)
 
 
         self.change_stop_button = QPushButton(self)
