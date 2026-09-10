@@ -47,5 +47,17 @@
         <source>Restart application to apply changes.</source>
         <translation>Zrestartuj aplikacje aby zobaczyć zmiany</translation>
     </message>
+    <message>
+        <source>Change</source>
+        <translation>Zmień</translation>
+    </message>
+    <message>
+        <source>Stop Recording:</source>
+        <translation>Zatrzymaj nagrywanie:</translation>
+    </message>
+    <message>
+        <source>Start Recording:</source>
+        <translation>Rozpocznij nagrywanie:</translation>
+    </message>
 </context>
 </TS>

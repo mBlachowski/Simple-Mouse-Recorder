@@ -1,20 +1,19 @@
 import json
 
 
-
 class Settings(object):
     def __init__(self):
         self.default_settings: dict = {
-            'general': {'lang': {'en':True, 'pl':False},
-            'theme': {'sys':True, 'dark':False, 'light': False},
-            'save_on_stop': True},
-            'key_bindings': {'start_recording': '','stop_recording': ''}}
+            'general': {'lang': {'en': True, 'pl': False},
+                        'theme': {'sys': True, 'dark': False, 'light': False},
+                        'save_on_stop': True},
+            'key_bindings': {'start_recording': 'ctrl+a', 'stop_recording': 'ctrl+s'}}
 
-        self.user_prefs:dict = self.load_settings()
+        self.user_prefs: dict = self.load_settings()
         if not self.is_settings_loaded():
             from PySide6.QtWidgets import QMessageBox
             QMessageBox.warning(None, 'Load error',
-                                    'Error while loading user_prefs.json. Loading default settings.')
+                                'Error while loading user_prefs.json. Loading default settings.')
             self.user_prefs = self.default_settings
             self.save_settings(self.user_prefs)
 
@@ -32,7 +31,6 @@ class Settings(object):
         except json.decoder.JSONDecodeError:
             print('Error while loading user_prefs.json. Json decode error.')
             return {}
-
 
     def save_settings(self, data: dict) -> None:
         config_json = json.dumps(data)

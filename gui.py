@@ -1,7 +1,13 @@
-from PySide6.QtCore import Qt, QTranslator, QLocale
+from unittest import signals
+
+import keyboard
+import threading
+
+from PySide6 import QtCore
+from PySide6.QtCore import Qt, QTranslator, QLocale, Signal
 from PySide6.QtGui import QActionGroup
 from PySide6.QtWidgets import (QMainWindow, QLabel, QMessageBox, QApplication, QHBoxLayout,
-                               QVBoxLayout, QPushButton, QTextEdit, QWidget)
+                               QVBoxLayout, QPushButton, QWidget)
 
 import settings as config
 
@@ -14,7 +20,7 @@ class MainWindow(QMainWindow):
         self.settings = config.Settings()
         self.user_prefs = self.settings.get_all_settings()
         self.keys_window = None
-        self.setWindowTitle('Mouse recorder')
+        self.setWindowTitle('Simple Mouse Recorder')
         self.setFixedSize(300,200)
 
         if not self.user_prefs['general']['lang']['en']:
@@ -32,6 +38,9 @@ class MainWindow(QMainWindow):
         self.theme_action_group = QActionGroup(self)
         self.theme_action_group.setExclusive(True)
         theme_menu = settings.addMenu(self.tr('Theme'))
+
+        keyboard.add_hotkey(self.user_prefs['key_bindings']['start_recording'], lambda: self.start_recording())
+        keyboard.add_hotkey(self.user_prefs['key_bindings']['stop_recording'], lambda: self.stop_recording())
 
         t_sys = theme_menu.addAction(self.tr('System default'))
         t_sys.setCheckable(True)
@@ -129,15 +138,21 @@ class MainWindow(QMainWindow):
     def _clear_key_window_reference(self):
         self.keys_window = None
 
+    def start_recording(self):
+        print('Start Recording')
+
+    def stop_recording(self):
+        print('Stop Recording')
 
 class KeyConfigWindow(QMainWindow):
-    def __init__(self, parent, user_prefs:dict):
+    def __init__(self, parent:MainWindow, user_prefs:dict):
         super().__init__(parent, Qt.WindowType.Window)
         self.parent = parent
         self.setWindowTitle('Key bindings')
         self.setFixedSize(300, 200)
         self.show()
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        self.user_prefs = user_prefs
 
         container = QWidget()
         self.setCentralWidget(container)
@@ -146,19 +161,72 @@ class KeyConfigWindow(QMainWindow):
         starthbox = QHBoxLayout()
         stophbox = QHBoxLayout()
 
-        start_keys_label = QLabel(self)
-        start_keys_label.setText(f'Start Recording:{user_prefs['key_bindings']['start_recording']}')
-        change_start_button = QPushButton(self)
-        change_start_button.setText('Change')
-        starthbox.addWidget(start_keys_label)
-        starthbox.addWidget(change_start_button)
+        #ToDo Fix Translation
+        self.start_keys_label = QLabel(self)
+        self.start_keys_label.setText('Start Recording:'+self.user_prefs['key_bindings']['start_recording'])
 
-        stop_key_label = QLabel(self)
-        stop_key_label.setText(f'Stop Recording:{user_prefs['key_bindings']['stop_recording']}')
-        change_stop_key_button = QPushButton(self)
-        change_stop_key_button.setText('Change')
-        stophbox.addWidget(stop_key_label)
-        stophbox.addWidget(change_stop_key_button)
+        self.change_start_button = QPushButton(self)
+        self.change_start_button.setText('Change')
+        self.change_start_button.clicked.connect(self.change_start_recording_keys)
+        self.change_start_button.setObjectName('btt_start')
+
+
+        starthbox.addWidget(self.start_keys_label)
+        starthbox.addWidget(self.change_start_button)
+
+        self.stop_keys_label = QLabel(self)
+        self.stop_keys_label.setText('Stop Recording:'+self.user_prefs['key_bindings']['stop_recording'])
+        self.stop_keys_label.setFixedWidth(100)
+
+
+        self.change_stop_button = QPushButton(self)
+        self.change_stop_button.setText('Change')
+        self.change_stop_button.clicked.connect(self.change_stop_recording_keys)
+        self.change_stop_button.setObjectName('btt_stop')
+
+        stophbox.addWidget(self.stop_keys_label)
+        stophbox.addWidget(self.change_stop_button)
 
         main_vbox.addLayout(starthbox)
         main_vbox.addLayout(stophbox)
+
+    def change_start_recording_keys(self):
+        self.start_keys_label.setText(self.tr('Start Recording:'))
+        previous_text = self.start_keys_label.text()
+
+        self.change_stop_button.setEnabled(False)
+        self.change_start_button.setEnabled(False)
+        thread = threading.Thread(target=lambda: self.record_hotkey(self.start_keys_label, previous_text,
+                                                                    self.change_start_button.objectName()))
+        thread.start()
+
+
+    def change_stop_recording_keys(self):
+        self.stop_keys_label.setText(self.tr('Stop Recording:'))
+        previous_text = self.stop_keys_label.text()
+
+        self.change_stop_button.setEnabled(False)
+        self.change_start_button.setEnabled(False)
+
+        thread = threading.Thread(target=lambda: self.record_hotkey(self.stop_keys_label, previous_text,
+                                                                    self.change_stop_button.objectName()))
+        thread.start()
+
+    def record_hotkey(self, label:QLabel, prev_text:str, clicked_btt:str):
+        hotkey = keyboard.read_hotkey(suppress=False)
+        label.setText(prev_text+hotkey)
+
+        if clicked_btt == 'btt_start':
+            keyboard.remove_hotkey(self.user_prefs['key_bindings']['start_recording'])
+            self.user_prefs['key_bindings']['start_recording'] = hotkey
+            keyboard.add_hotkey(self.user_prefs['key_bindings']['start_recording'], self.parent.start_recording)
+        elif clicked_btt == 'btt_stop':
+            keyboard.remove_hotkey(self.user_prefs['key_bindings']['stop_recording'])
+            self.user_prefs['key_bindings']['stop_recording'] = hotkey
+            keyboard.add_hotkey(self.user_prefs['key_bindings']['stop_recording'], self.parent.stop_recording)
+
+        self.parent.user_prefs = self.user_prefs
+        self.parent.settings.save_settings(self.user_prefs)
+
+        self.change_stop_button.setEnabled(True)
+        self.change_start_button.setEnabled(True)
