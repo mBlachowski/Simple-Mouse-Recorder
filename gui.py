@@ -6,7 +6,7 @@ import mouse
 from PySide6.QtCore import Qt, QTranslator, QLocale
 from PySide6.QtGui import QActionGroup
 from PySide6.QtWidgets import (QMainWindow, QLabel, QMessageBox, QApplication, QHBoxLayout,
-                               QVBoxLayout, QPushButton, QWidget)
+                               QVBoxLayout, QPushButton, QWidget, QCheckBox, QTimeEdit)
 
 import settings as config
 
@@ -20,16 +20,12 @@ class MainWindow(QMainWindow):
         self.user_prefs = self.settings.get_all_settings()
         self.keys_window = None
         self.setWindowTitle('Simple Mouse Recorder')
-        self.setFixedSize(300,200)
+        self.setFixedSize(300,150)
 
         if not self.user_prefs['general']['lang']['en']:
             translator = QTranslator(self.app)
             if translator.load(f'Localisation/lang_{QLocale().name()}'):
                 self.app.installTranslator(translator)
-
-        label = QLabel('Hello World')
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.setCentralWidget(label)
 
         menubar = self.menuBar()
         settings = menubar.addMenu(self.tr('Settings'))
@@ -95,6 +91,43 @@ class MainWindow(QMainWindow):
         info.triggered.connect(lambda: QMessageBox.information(self,self.tr('About'),
                         'Simple Mouse Recorder created by Michał Blachowski.\nVersion: 1.0\nUnder MIT license'))
 
+        container = QWidget()
+        self.setCentralWidget(container)
+        self.main_vbox = QVBoxLayout(container)
+        self.main_vbox.addStretch()
+
+        self.misc_configurationHbox = QHBoxLayout()
+
+        self.loop_checkbox = QCheckBox()
+        self.loop_checkbox.setText(self.tr('Loop'))
+
+        self.timeedit = QTimeEdit()
+        self.delay_label = QLabel()
+        self.delay_label.setText(self.tr('Delay:'))
+
+        self.misc_configurationHbox.addWidget(self.loop_checkbox)
+        self.misc_configurationHbox.addWidget(self.delay_label)
+        self.misc_configurationHbox.addWidget(self.timeedit)
+        self.misc_configurationHbox.setStretch(0, True)
+
+        self.record_btt_hbox = QHBoxLayout()
+        self.start_recording_btt = QPushButton(self.tr('Start recording'))
+        self.start_recording_btt.clicked.connect(self.start_recording)
+        self.stop_recording_btt = QPushButton(self.tr('Stop recording'))
+        self.stop_recording_btt.clicked.connect(self.stop_recording)
+        self.stop_recording_btt.setEnabled(False)
+
+        self.record_btt_hbox.addWidget(self.start_recording_btt)
+        self.record_btt_hbox.addWidget(self.stop_recording_btt)
+
+        self.play_button_hbox = QHBoxLayout()
+        self.play_button = QPushButton(self.tr('Play recording'))
+        self.play_button_hbox.addWidget(self.play_button)
+
+        self.main_vbox.addLayout(self.misc_configurationHbox)
+        self.main_vbox.addLayout(self.record_btt_hbox)
+        self.main_vbox.addLayout(self.play_button_hbox)
+
         self.apply_theme(save_prefs=False)
         self.show()
 
@@ -148,7 +181,7 @@ class KeyConfigWindow(QMainWindow):
         super().__init__(parent, Qt.WindowType.Window)
         self.parent = parent
         self.setWindowTitle('Key bindings')
-        self.setFixedSize(300, 200)
+        self.setFixedSize(300, 80)
         self.show()
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.user_prefs = user_prefs
@@ -156,6 +189,7 @@ class KeyConfigWindow(QMainWindow):
         container = QWidget()
         self.setCentralWidget(container)
         main_vbox = QVBoxLayout(container)
+        main_vbox.addStretch()
 
         starthbox = QHBoxLayout()
         stophbox = QHBoxLayout()
