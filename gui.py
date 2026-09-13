@@ -3,7 +3,7 @@ import threading
 import keyboard
 import mouse
 
-from PySide6.QtCore import Qt, QTranslator, QLocale
+from PySide6.QtCore import Qt, QTranslator, QLocale, QTime, QDateTime
 from PySide6.QtGui import QActionGroup
 from PySide6.QtWidgets import (QMainWindow, QLabel, QMessageBox, QApplication, QHBoxLayout,
                                QVBoxLayout, QPushButton, QWidget, QCheckBox, QTimeEdit)
@@ -20,7 +20,8 @@ class MainWindow(QMainWindow):
         self.user_prefs = self.settings.get_all_settings()
         self.keys_window = None
         self.setWindowTitle('Simple Mouse Recorder')
-        self.setFixedSize(300,150)
+        self.setFixedSize(320,200)
+        self.recorded_events = []
 
         if not self.user_prefs['general']['lang']['en']:
             translator = QTranslator(self.app)
@@ -102,6 +103,7 @@ class MainWindow(QMainWindow):
         self.loop_checkbox.setText(self.tr('Loop'))
 
         self.timeedit = QTimeEdit()
+        self.timeedit.setDisplayFormat('hh:mm:ss')
         self.delay_label = QLabel()
         self.delay_label.setText(self.tr('Delay:'))
 
@@ -121,12 +123,26 @@ class MainWindow(QMainWindow):
         self.record_btt_hbox.addWidget(self.stop_recording_btt)
 
         self.play_button_hbox = QHBoxLayout()
-        self.play_button = QPushButton(self.tr('Play recording'))
+        self.play_button = QPushButton(self.tr('Replay'))
+        self.play_button.clicked.connect(self._create_play_thread)
         self.play_button_hbox.addWidget(self.play_button)
+
+        self.stop_button_hbox = QHBoxLayout()
+        self.stop_button = QPushButton(self.tr('Stop'))
+        self.stop_button.setEnabled(False)
+        self.stop_button.clicked.connect(self._create_play_thread)
+        self.stop_button_hbox.addWidget(self.stop_button)
+
+        self.curr_rt_hbox = QHBoxLayout()
+        self.recording_title_label = QLabel()
+        self.recording_title_label.setText(self.tr('Current recording: '))
+        self.curr_rt_hbox.addWidget(self.recording_title_label)
 
         self.main_vbox.addLayout(self.misc_configurationHbox)
         self.main_vbox.addLayout(self.record_btt_hbox)
         self.main_vbox.addLayout(self.play_button_hbox)
+        self.main_vbox.addLayout(self.stop_button_hbox)
+        self.main_vbox.addLayout(self.curr_rt_hbox)
 
         self.apply_theme(save_prefs=False)
         self.show()
@@ -171,10 +187,35 @@ class MainWindow(QMainWindow):
         self.keys_window = None
 
     def start_recording(self):
-        print('Start Recording')
+        self.recorded_events = []
+        mouse.hook(self.get_mouse_events)
+        self.start_recording_btt.setEnabled(False)
+        self.stop_recording_btt.setEnabled(True)
+        self.play_button.setEnabled(False)
 
     def stop_recording(self):
-        print('Stop Recording')
+        mouse.unhook(self.get_mouse_events)
+        print(self.recorded_events)
+        self.start_recording_btt.setEnabled(True)
+        self.stop_recording_btt.setEnabled(False)
+        self.play_button.setEnabled(True)
+        self.recording_title_label.setText(self.tr('Current recording: ')+'Recording ' +
+                                           QDateTime.currentDateTime().toString())
+
+    def _create_play_thread(self):
+        if self.recorded_events:
+            self.play_button.setEnabled(False)
+            self.start_recording_btt.setEnabled(False)
+            play_thread = threading.Thread(target=self.play_recording)
+            play_thread.start()
+
+    def play_recording(self):
+        mouse.play(self.recorded_events)
+        self.play_button.setEnabled(True)
+        self.start_recording_btt.setEnabled(True)
+
+    def get_mouse_events(self, event):
+        self.recorded_events.append(event)
 
 class KeyConfigWindow(QMainWindow):
     def __init__(self, parent:MainWindow, user_prefs:dict):

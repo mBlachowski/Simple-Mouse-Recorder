@@ -1,4 +1,4 @@
-
+# ToDo: This is a dummy class for now. all recorder logic should be here.
 class Recorder(object):
     def __init__(self):
         pass
