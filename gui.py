@@ -2,15 +2,16 @@ import threading
 
 import keyboard
 import mouse
+from PySide6 import QtCore
 
-from PySide6.QtCore import Qt, QTranslator, QLocale, QTime, QDateTime
+from PySide6.QtCore import Qt, QTranslator, QLocale, QTimer, QDateTime
 from PySide6.QtGui import QActionGroup
 from PySide6.QtWidgets import (QMainWindow, QLabel, QMessageBox, QApplication, QHBoxLayout,
                                QVBoxLayout, QPushButton, QWidget, QCheckBox, QTimeEdit)
 
 import settings as config
 
-
+#ToDo: Clean up this code. All recorder logic should be in recorder.py
 class MainWindow(QMainWindow):
     def __init__(self, app: QApplication):
 
@@ -29,7 +30,9 @@ class MainWindow(QMainWindow):
                 self.app.installTranslator(translator)
 
         menubar = self.menuBar()
+        file = menubar.addMenu(self.tr('File'))
         settings = menubar.addMenu(self.tr('Settings'))
+
 
         self.theme_action_group = QActionGroup(self)
         self.theme_action_group.setExclusive(True)
@@ -37,6 +40,13 @@ class MainWindow(QMainWindow):
 
         keyboard.add_hotkey(self.user_prefs['key_bindings']['start_recording'], lambda: self.start_recording())
         keyboard.add_hotkey(self.user_prefs['key_bindings']['stop_recording'], lambda: self.stop_recording())
+
+
+        save = file.addAction(self.tr('Save'))
+        save.setCheckable(True)
+
+        load = file.addAction(self.tr('Load'))
+        load.setCheckable(True)
 
         t_sys = theme_menu.addAction(self.tr('System default'))
         t_sys.setCheckable(True)
@@ -49,7 +59,6 @@ class MainWindow(QMainWindow):
         t_dark.setChecked(self.user_prefs['general']['theme']['dark'])
         t_dark.setObjectName('dark')
         t_dark.triggered.connect(self.apply_theme)
-
         t_light = theme_menu.addAction(self.tr('Light'))
         t_light.setCheckable(True)
         t_light.setChecked(self.user_prefs['general']['theme']['light'])
@@ -80,10 +89,14 @@ class MainWindow(QMainWindow):
         self.lang_action_group.addAction(l_pl)
 
         settings.addSeparator()
+
+
         sos = settings.addAction(self.tr('Save recording on stop'))
         sos.setCheckable(True)
         sos.setChecked(self.user_prefs['general']['save_on_stop'])
         sos.triggered.connect(self.save_on_stop)
+
+        settings.addSeparator()
 
         key_b = settings.addAction(self.tr('Key bindings'))
         key_b.triggered.connect(self.show_keybindings_window)
@@ -204,10 +217,15 @@ class MainWindow(QMainWindow):
 
     def _create_play_thread(self):
         if self.recorded_events:
+            play_thread = threading.Thread(target=self.play_recording)
             self.play_button.setEnabled(False)
             self.start_recording_btt.setEnabled(False)
-            play_thread = threading.Thread(target=self.play_recording)
-            play_thread.start()
+            if self.timeedit.time() != QtCore.QTime(0, 0, 0):
+                print(self.timeedit.time().msecsSinceStartOfDay())
+                QTimer.singleShot(self.timeedit.time().msecsSinceStartOfDay(),lambda: play_thread.start())
+            else:
+                play_thread.start()
+
 
     def play_recording(self):
         mouse.play(self.recorded_events)
