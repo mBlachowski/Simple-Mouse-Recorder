@@ -1,12 +1,8 @@
 import threading
-from ctypes import cast
-from tkinter import dialog
-from unittest.mock import inplace
-
+import pickle
 import keyboard
 import mouse
 from PySide6 import QtCore
-
 from PySide6.QtCore import Qt, QTranslator, QLocale, QTimer, QDateTime, Signal
 from PySide6.QtGui import QActionGroup
 from PySide6.QtWidgets import (QMainWindow, QLabel, QMessageBox, QApplication, QHBoxLayout,
@@ -14,7 +10,8 @@ from PySide6.QtWidgets import (QMainWindow, QLabel, QMessageBox, QApplication, Q
 
 import settings as config
 
-#ToDo: Clean up this code. All recorder logic should be in recorder.py
+
+#ToDo: Clean up this code. All recorder logic should be in recorder.pyó
 class MainWindow(QMainWindow):
     stop_replaying = Signal() # That's definitely bad
     def __init__(self, app: QApplication):
@@ -258,12 +255,17 @@ class MainWindow(QMainWindow):
         if self.recorded_events:
             filename = QFileDialog.getSaveFileName(self, self.tr('Save as'),self.current_recording_name.replace(':', ';'),'*.smrrec')
             if not filename[0] == '':
-                with open(filename[0], 'w') as record_file:
-                    for x in self.recorded_events:
-                        record_file.write(mouse.MoveEvent.__str__(x)+'\n')
+                with open(filename[0], 'wb') as record_file:
+                    pickle.dump(self.recorded_events, record_file)
 
     def load(self):
-        pass
+        filename = QFileDialog.getOpenFileName(self, self.tr('Open'),'', '*.smrrec')
+        if not filename[0] == '':
+            with open(filename[0], 'rb') as record_file:
+                self.recorded_events = pickle.load(record_file)
+                self.current_recording_name = filename[0].split('/')[-1]
+                self.play_button.setEnabled(False)
+                self.recording_title_label.setText(self.tr('Current recording: ')+self.current_recording_name)
 
 class KeyConfigWindow(QMainWindow):
     def __init__(self, parent:MainWindow, user_prefs:dict):
