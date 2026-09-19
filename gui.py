@@ -1,18 +1,22 @@
 import threading
+from ctypes import cast
+from tkinter import dialog
+from unittest.mock import inplace
 
 import keyboard
 import mouse
 from PySide6 import QtCore
 
-from PySide6.QtCore import Qt, QTranslator, QLocale, QTimer, QDateTime
+from PySide6.QtCore import Qt, QTranslator, QLocale, QTimer, QDateTime, Signal
 from PySide6.QtGui import QActionGroup
 from PySide6.QtWidgets import (QMainWindow, QLabel, QMessageBox, QApplication, QHBoxLayout,
-                               QVBoxLayout, QPushButton, QWidget, QCheckBox, QTimeEdit)
+                               QVBoxLayout, QPushButton, QWidget, QCheckBox, QTimeEdit, QFileDialog)
 
 import settings as config
 
 #ToDo: Clean up this code. All recorder logic should be in recorder.py
 class MainWindow(QMainWindow):
+    stop_replaying = Signal() # That's definitely bad
     def __init__(self, app: QApplication):
 
         super().__init__()
@@ -23,6 +27,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle('Simple Mouse Recorder')
         self.setFixedSize(320,200)
         self.recorded_events = []
+        self.current_recording_name = None
 
         if not self.user_prefs['general']['lang']['en']:
             translator = QTranslator(self.app)
@@ -43,10 +48,10 @@ class MainWindow(QMainWindow):
 
 
         save = file.addAction(self.tr('Save'))
-        save.setCheckable(True)
+        save.triggered.connect(self.save)
 
         load = file.addAction(self.tr('Load'))
-        load.setCheckable(True)
+        load.triggered.connect(self.load)
 
         t_sys = theme_menu.addAction(self.tr('System default'))
         t_sys.setCheckable(True)
@@ -143,7 +148,7 @@ class MainWindow(QMainWindow):
         self.stop_button_hbox = QHBoxLayout()
         self.stop_button = QPushButton(self.tr('Stop'))
         self.stop_button.setEnabled(False)
-        self.stop_button.clicked.connect(self._create_play_thread)
+        self.stop_button.clicked.connect(self.stop_replay)
         self.stop_button_hbox.addWidget(self.stop_button)
 
         self.curr_rt_hbox = QHBoxLayout()
@@ -159,6 +164,12 @@ class MainWindow(QMainWindow):
 
         self.apply_theme(save_prefs=False)
         self.show()
+
+    def stop_replay(self):
+        self.play_button.setEnabled(True)
+        self.stop_button.setEnabled(False)
+        self.stop_replaying.emit()
+
 
     def apply_theme(self, save_prefs: bool = True):
         for item in self.theme_action_group.actions():
@@ -212,17 +223,24 @@ class MainWindow(QMainWindow):
         self.start_recording_btt.setEnabled(True)
         self.stop_recording_btt.setEnabled(False)
         self.play_button.setEnabled(True)
-        self.recording_title_label.setText(self.tr('Current recording: ')+'Recording ' +
-                                           QDateTime.currentDateTime().toString())
+        self.current_recording_name = 'Recording ' + QDateTime.currentDateTime().toString()
+        self.recording_title_label.setText(self.tr('Current recording: ')+self.current_recording_name)
 
     def _create_play_thread(self):
         if self.recorded_events:
             play_thread = threading.Thread(target=self.play_recording)
             self.play_button.setEnabled(False)
             self.start_recording_btt.setEnabled(False)
+
             if self.timeedit.time() != QtCore.QTime(0, 0, 0):
-                print(self.timeedit.time().msecsSinceStartOfDay())
-                QTimer.singleShot(self.timeedit.time().msecsSinceStartOfDay(),lambda: play_thread.start())
+                self.play_button.setEnabled(False)
+                self.stop_button.setEnabled(True)
+                timer = QTimer()
+                timer.setSingleShot(True)
+                timer.setInterval(self.timeedit.time().msecsSinceStartOfDay())
+                timer.timeout.connect(lambda :play_thread.start())
+                timer.start()
+                self.stop_replaying.connect(lambda:timer.stop())
             else:
                 play_thread.start()
 
@@ -232,8 +250,20 @@ class MainWindow(QMainWindow):
         self.play_button.setEnabled(True)
         self.start_recording_btt.setEnabled(True)
 
+
     def get_mouse_events(self, event):
         self.recorded_events.append(event)
+
+    def save(self):
+        if self.recorded_events:
+            filename = QFileDialog.getSaveFileName(self, self.tr('Save as'),self.current_recording_name.replace(':', ';'),'*.smrrec')
+            if not filename[0] == '':
+                with open(filename[0], 'w') as record_file:
+                    for x in self.recorded_events:
+                        record_file.write(mouse.MoveEvent.__str__(x)+'\n')
+
+    def load(self):
+        pass
 
 class KeyConfigWindow(QMainWindow):
     def __init__(self, parent:MainWindow, user_prefs:dict):
