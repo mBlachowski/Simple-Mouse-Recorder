@@ -48,7 +48,7 @@
     <message id="THEME_LIGHT">
         <source>Dark</source>
         <extracomment>Menu theme light string</extracomment>
-        <translation>Dark</translation>
+        <translation>Light</translation>
         <extra-Context>Menu theme light string</extra-Context>
     </message>
     <message id="LANG_MENUBAR">
