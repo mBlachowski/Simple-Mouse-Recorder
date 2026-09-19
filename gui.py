@@ -1,5 +1,7 @@
 import threading
 import pickle
+from threading import Thread
+
 import keyboard
 import mouse
 from PySide6 import QtCore
@@ -11,7 +13,7 @@ from PySide6.QtWidgets import (QMainWindow, QLabel, QMessageBox, QApplication, Q
 import settings as config
 
 
-#ToDo: Clean up this code. All recorder logic should be in recorder.pyó
+#ToDo: Clean up this code. All recorder logic should be in recorder.py
 class MainWindow(QMainWindow):
     stop_replaying = Signal() # That's definitely bad
     def __init__(self, app: QApplication):
@@ -42,7 +44,7 @@ class MainWindow(QMainWindow):
 
         keyboard.add_hotkey(self.user_prefs['key_bindings']['start_recording'], lambda: self.start_recording())
         keyboard.add_hotkey(self.user_prefs['key_bindings']['stop_recording'], lambda: self.stop_recording())
-
+        keyboard.add_hotkey('ctrl+shift+a', lambda: self.stop_replay())
 
         save = file.addAction(self.tr('Save'))
         save.triggered.connect(self.save)
@@ -225,28 +227,29 @@ class MainWindow(QMainWindow):
 
     def _create_play_thread(self):
         if self.recorded_events:
-            play_thread = threading.Thread(target=self.play_recording)
             self.play_button.setEnabled(False)
             self.start_recording_btt.setEnabled(False)
-
             if self.timeedit.time() != QtCore.QTime(0, 0, 0):
+
                 self.play_button.setEnabled(False)
                 self.stop_button.setEnabled(True)
                 timer = QTimer()
-                timer.setSingleShot(True)
+                self.stop_replaying.connect(lambda: timer.stop())
+                if not self.loop_checkbox.isChecked():
+                    timer.setSingleShot(True)
                 timer.setInterval(self.timeedit.time().msecsSinceStartOfDay())
-                timer.timeout.connect(lambda :play_thread.start())
+                timer.timeout.connect(lambda : threading.Thread(target=self.play_recording).start())
                 timer.start()
-                self.stop_replaying.connect(lambda:timer.stop())
+
             else:
-                play_thread.start()
+                threading.Thread(target=self.play_recording).start()
 
 
     def play_recording(self):
         mouse.play(self.recorded_events)
         self.play_button.setEnabled(True)
         self.start_recording_btt.setEnabled(True)
-
+        
 
     def get_mouse_events(self, event):
         self.recorded_events.append(event)
