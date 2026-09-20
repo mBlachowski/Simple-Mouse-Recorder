@@ -27,6 +27,8 @@ class MainWindow(QMainWindow):
         self.setFixedSize(320,200)
         self.recorded_events = []
         self.current_recording_name = None
+        self.is_recording = False
+
         translator = QTranslator(self.app)
 
         if self.user_prefs['general']['lang']['pl']:
@@ -218,15 +220,17 @@ class MainWindow(QMainWindow):
         self.start_recording_btt.setEnabled(False)
         self.stop_recording_btt.setEnabled(True)
         self.play_button.setEnabled(False)
+        self.is_recording = True
 
     def stop_recording(self):
-        mouse.unhook(self.get_mouse_events)
-        print(self.recorded_events)
-        self.start_recording_btt.setEnabled(True)
-        self.stop_recording_btt.setEnabled(False)
-        self.play_button.setEnabled(True)
-        self.current_recording_name = 'Recording ' + QDateTime.currentDateTime().toString()
-        self.recording_title_label.setText(qtTrId('CURR_RECORDING_LABEL')+self.current_recording_name)
+        if self.is_recording:
+            mouse.unhook(self.get_mouse_events)
+            self.start_recording_btt.setEnabled(True)
+            self.stop_recording_btt.setEnabled(False)
+            self.play_button.setEnabled(True)
+            self.current_recording_name = 'Recording ' + QDateTime.currentDateTime().toString()
+            self.recording_title_label.setText(qtTrId('CURR_RECORDING_LABEL')+self.current_recording_name)
+            self.is_recording = False
 
     def _create_play_thread(self):
         if self.recorded_events:
@@ -321,9 +325,9 @@ class KeyConfigWindow(QMainWindow):
     def change_start_recording_keys(self):
         self.start_keys_label.setText(qtTrId('Start Recording:'))
         previous_text = self.start_keys_label.text()
-
         self.change_stop_button.setEnabled(False)
         self.change_start_button.setEnabled(False)
+        keyboard.remove_hotkey(self.user_prefs['key_bindings']['start_recording'])
         thread = threading.Thread(target=lambda: self.record_hotkey(self.start_keys_label, previous_text,
                                                                     self.change_start_button.objectName()))
         thread.start()
@@ -332,10 +336,9 @@ class KeyConfigWindow(QMainWindow):
     def change_stop_recording_keys(self):
         self.stop_keys_label.setText(qtTrId('Stop Recording:'))
         previous_text = self.stop_keys_label.text()
-
         self.change_stop_button.setEnabled(False)
         self.change_start_button.setEnabled(False)
-
+        keyboard.remove_hotkey(self.user_prefs['key_bindings']['stop_recording'])
         thread = Thread(target=lambda: self.record_hotkey(self.stop_keys_label, previous_text,
                                                                     self.change_stop_button.objectName()))
         thread.start()
@@ -345,11 +348,9 @@ class KeyConfigWindow(QMainWindow):
         label.setText(prev_text+hotkey)
 
         if clicked_btt == 'btt_start':
-            keyboard.remove_hotkey(self.user_prefs['key_bindings']['start_recording'])
             self.user_prefs['key_bindings']['start_recording'] = hotkey
             keyboard.add_hotkey(self.user_prefs['key_bindings']['start_recording'], self.parent.start_recording)
         elif clicked_btt == 'btt_stop':
-            keyboard.remove_hotkey(self.user_prefs['key_bindings']['stop_recording'])
             self.user_prefs['key_bindings']['stop_recording'] = hotkey
             keyboard.add_hotkey(self.user_prefs['key_bindings']['stop_recording'], self.parent.stop_recording)
 
