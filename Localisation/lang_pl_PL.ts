@@ -148,7 +148,7 @@
         <extra-Context>Start recording key bindigs window string</extra-Context>
     </message>
     <message id="CHANGE_HOTKEY_BTT">
-        <source>Start Change:</source>
+        <source>Change</source>
         <extracomment>change hotkey btt string</extracomment>
         <translation>Zmień</translation>
         <extra-Context>change hotkey btt string</extra-Context>
@@ -164,6 +164,12 @@
         <extracomment>Loop check string</extracomment>
         <translation>Powtarzaj</translation>
         <extra-Context>Loop check string</extra-Context>
+    </message>
+<message id="STOP_REPLAY_RECORDING_DESC">
+        <source>Stop replay</source>
+        <extracomment>Stop replay string</extracomment>
+        <translation>Zatrzymaj odtwarzanie:</translation>
+        <extra-Context>Stop replay string</extra-Context>
     </message>
 </context>
 </TS>

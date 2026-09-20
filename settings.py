@@ -32,7 +32,6 @@ class Settings(object):
 
     def save_settings(self, data: dict) -> None:
         config_json = json.dumps(data)
-        print(data)
         with open('user_prefs.json', 'w') as config_file:
             config_file.write(config_json)
 

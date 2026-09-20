@@ -148,15 +148,15 @@
         <extra-Context>Start recording key bindigs window string</extra-Context>
     </message>
     <message id="CHANGE_HOTKEY_BTT">
-        <source>Start Change:</source>
+        <source>Change</source>
         <extracomment>change hotkey btt string</extracomment>
-        <translation>Start Change:</translation>
+        <translation>Change</translation>
         <extra-Context>change hotkey btt string</extra-Context>
     </message>
     <message id="STOP_RECORDING_DESC">
         <source>Stop recording</source>
         <extracomment>Stop recording key  window string</extracomment>
-        <translation>Stop recording</translation>
+        <translation>Stop recording:</translation>
         <extra-Context>Stop recording key bindigs window string</extra-Context>
     </message>
     <message id="LOOP_CHECKBOX">
@@ -164,6 +164,12 @@
         <extracomment>Loop check string</extracomment>
         <translation>Loop</translation>
         <extra-Context>Loop check string</extra-Context>
+    </message>
+<message id="STOP_REPLAY_RECORDING_DESC">
+        <source>Stop replay</source>
+        <extracomment>Stop replay string</extracomment>
+        <translation>Stop replay:</translation>
+        <extra-Context>Stop replay string</extra-Context>
     </message>
 </context>
 </TS>

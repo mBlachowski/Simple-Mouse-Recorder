@@ -48,7 +48,7 @@ class MainWindow(QMainWindow):
 
         keyboard.add_hotkey(self.user_prefs['key_bindings']['start_recording'], lambda: self.start_recording())
         keyboard.add_hotkey(self.user_prefs['key_bindings']['stop_recording'], lambda: self.stop_recording())
-        keyboard.add_hotkey('ctrl+shift+a', lambda: self.stop_replay())
+        keyboard.add_hotkey(self.user_prefs['key_bindings']['stop_replay'], lambda: self.stop_replay())
 
         save = file.addAction(qtTrId('SAVE_MENUBAR'))
         save.triggered.connect(self.save)
@@ -281,7 +281,7 @@ class KeyConfigWindow(QMainWindow):
         super().__init__(parent, Qt.WindowType.Window)
         self.parent = parent
         self.setWindowTitle(qtTrId('KEY_BINDINGS_MENUBAR'))
-        self.setFixedSize(300, 80)
+        self.setFixedSize(350, 100)
         self.show()
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.user_prefs = user_prefs
@@ -293,6 +293,7 @@ class KeyConfigWindow(QMainWindow):
 
         starthbox = QHBoxLayout()
         stophbox = QHBoxLayout()
+        stopreplayhbox = QHBoxLayout()
 
         #ToDo Fix Translation
         self.start_keys_label = QLabel(self)
@@ -302,7 +303,7 @@ class KeyConfigWindow(QMainWindow):
         self.change_start_button.setText(qtTrId('CHANGE_HOTKEY_BTT'))
         self.change_start_button.clicked.connect(self.change_start_recording_keys)
         self.change_start_button.setObjectName('btt_start')
-
+        self.change_start_button.setFixedWidth(130)
 
         starthbox.addWidget(self.start_keys_label)
         starthbox.addWidget(self.change_start_button)
@@ -315,18 +316,34 @@ class KeyConfigWindow(QMainWindow):
         self.change_stop_button.setText(qtTrId('CHANGE_HOTKEY_BTT'))
         self.change_stop_button.clicked.connect(self.change_stop_recording_keys)
         self.change_stop_button.setObjectName('btt_stop')
+        self.change_stop_button.setFixedWidth(130)
+
 
         stophbox.addWidget(self.stop_keys_label)
         stophbox.addWidget(self.change_stop_button)
 
+        self.stop_replay_keys_label = QLabel(self)
+        self.stop_replay_keys_label.setText(qtTrId('STOP_REPLAY_RECORDING_DESC') + self.user_prefs['key_bindings']['stop_replay'])
+
+        self.change_stop_replay_button = QPushButton(self)
+        self.change_stop_replay_button.setText(qtTrId('CHANGE_HOTKEY_BTT'))
+        self.change_stop_replay_button.clicked.connect(self.change_stop_replay_keys)
+        self.change_stop_replay_button.setObjectName('btt_stop_replay')
+        self.change_stop_replay_button.setFixedWidth(130)
+
+        stopreplayhbox.addWidget(self.stop_replay_keys_label)
+        stopreplayhbox.addWidget(self.change_stop_replay_button)
+
         main_vbox.addLayout(starthbox)
         main_vbox.addLayout(stophbox)
+        main_vbox.addLayout(stopreplayhbox)
 
     def change_start_recording_keys(self):
-        self.start_keys_label.setText(qtTrId('Start Recording:'))
+        self.start_keys_label.setText(qtTrId('START_RECORDING_KEY_DESC'))
         previous_text = self.start_keys_label.text()
         self.change_stop_button.setEnabled(False)
         self.change_start_button.setEnabled(False)
+        self.change_stop_replay_button.setEnabled(False)
         keyboard.remove_hotkey(self.user_prefs['key_bindings']['start_recording'])
         thread = threading.Thread(target=lambda: self.record_hotkey(self.start_keys_label, previous_text,
                                                                     self.change_start_button.objectName()))
@@ -334,13 +351,25 @@ class KeyConfigWindow(QMainWindow):
 
 
     def change_stop_recording_keys(self):
-        self.stop_keys_label.setText(qtTrId('Stop Recording:'))
+        self.stop_keys_label.setText(qtTrId('STOP_RECORDING_DESC'))
         previous_text = self.stop_keys_label.text()
         self.change_stop_button.setEnabled(False)
         self.change_start_button.setEnabled(False)
+        self.change_stop_replay_button.setEnabled(False)
         keyboard.remove_hotkey(self.user_prefs['key_bindings']['stop_recording'])
         thread = Thread(target=lambda: self.record_hotkey(self.stop_keys_label, previous_text,
                                                                     self.change_stop_button.objectName()))
+        thread.start()
+
+    def change_stop_replay_keys(self):
+        self.stop_replay_keys_label.setText(qtTrId('STOP_REPLAY_RECORDING_DESC'))
+        previous_text = self.stop_replay_keys_label.text()
+        self.change_stop_button.setEnabled(False)
+        self.change_start_button.setEnabled(False)
+        self.change_stop_replay_button.setEnabled(False)
+        keyboard.remove_hotkey(self.user_prefs['key_bindings']['stop_replay'])
+        thread = Thread(target=lambda: self.record_hotkey(self.stop_replay_keys_label, previous_text,
+                                                                    self.change_stop_replay_button.objectName()))
         thread.start()
 
     def record_hotkey(self, label:QLabel, prev_text:str, clicked_btt:str):
@@ -353,9 +382,13 @@ class KeyConfigWindow(QMainWindow):
         elif clicked_btt == 'btt_stop':
             self.user_prefs['key_bindings']['stop_recording'] = hotkey
             keyboard.add_hotkey(self.user_prefs['key_bindings']['stop_recording'], self.parent.stop_recording)
+        elif clicked_btt == 'btt_stop_replay':
+            self.user_prefs['key_bindings']['stop_replay'] = hotkey
+            keyboard.add_hotkey(self.user_prefs['key_bindings']['stop_replay'], self.parent.stop_replay)
 
         self.parent.user_prefs = self.user_prefs
         self.parent.settings.save_settings(self.user_prefs)
 
         self.change_stop_button.setEnabled(True)
         self.change_start_button.setEnabled(True)
+        self.change_stop_replay_button.setEnabled(True)
