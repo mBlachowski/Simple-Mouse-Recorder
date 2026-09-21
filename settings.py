@@ -1,4 +1,6 @@
 import json
+import os
+
 from PySide6.QtWidgets import QMessageBox
 
 class Settings(object):
@@ -7,7 +9,7 @@ class Settings(object):
             'general': {'lang': {'en': True, 'pl': False},
                         'theme': {'sys': True, 'dark': False, 'light': False},
                         'save_on_stop': True},
-            'key_bindings': {'start_recording': 'ctrl+a', 'stop_recording': 'ctrl+s'}}
+            'key_bindings': {'start_recording': 'ctrl+a', 'stop_recording': 'ctrl+s', "stop_replay": "ctrl+shift+A"}}
 
         self.user_prefs: dict = self.load_settings()
 
@@ -16,13 +18,14 @@ class Settings(object):
 
     def load_settings(self) -> dict:
         try:
-            with open('user_prefs.json', 'r') as config_file:
+            with open(fr'{os.getcwd()}\user_prefs.json', 'r') as config_file:
                 data = json.load(config_file)
                 return data
         except FileNotFoundError:
             error_reason:str = 'user_prefs.json not found'
             QMessageBox.warning(None,'Error', f'Error loading user_prefs.json. {error_reason}. '
                                          f'Loading default settings.)')
+            self.save_settings(self.default_settings)
             return self.default_settings
         except json.decoder.JSONDecodeError:
             error_reason:str = 'Error loading user_prefs.json. Json decode error.'
@@ -32,7 +35,7 @@ class Settings(object):
 
     def save_settings(self, data: dict) -> None:
         config_json = json.dumps(data)
-        with open('user_prefs.json', 'w') as config_file:
+        with open(fr'{os.getcwd()}\user_prefs.json', 'w') as config_file:
             config_file.write(config_json)
 
     def get_default_settings(self) -> dict:
