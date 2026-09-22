@@ -10,6 +10,7 @@ from PySide6.QtGui import QActionGroup
 from PySide6.QtWidgets import (QMainWindow, QLabel, QMessageBox, QApplication, QHBoxLayout,
                                QVBoxLayout, QPushButton, QWidget, QCheckBox, QTimeEdit, QFileDialog)
 
+import recorder
 import settings as config
 from recorder import Recorder
 
@@ -52,10 +53,10 @@ class MainWindow(QMainWindow):
         keyboard.add_hotkey(self.user_prefs['key_bindings']['stop_replay'], lambda: self.stop_replay())
 
         save = file.addAction(qtTrId('SAVE_MENUBAR'))
-        save.triggered.connect(self.save)
+        save.triggered.connect(self.recorder.save_recording)
 
         load = file.addAction(qtTrId('LOAD_MENUBAR'))
-        load.triggered.connect(self.load)
+        load.triggered.connect(self.load_menubar_button)
 
         t_sys = theme_menu.addAction(qtTrId('THEME_SYS_DEFAULT'))
         t_sys.setCheckable(True)
@@ -147,7 +148,7 @@ class MainWindow(QMainWindow):
 
         self.play_button_hbox = QHBoxLayout()
         self.play_button = QPushButton(qtTrId('REPLAY_BTT'))
-        self.play_button.clicked.connect(self._create_play_thread)
+        self.play_button.clicked.connect(self.play_recording_button)
         self.play_button_hbox.addWidget(self.play_button)
 
         self.stop_button_hbox = QHBoxLayout()
@@ -233,49 +234,17 @@ class MainWindow(QMainWindow):
             self.recording_title_label.setText(qtTrId('CURR_RECORDING_LABEL')+self.current_recording_name)
             self.is_recording = False
 
-    def _create_play_thread(self):
-        if self.recorded_events:
-            self.play_button.setEnabled(False)
-            self.start_recording_btt.setEnabled(False)
-            if self.timeedit.time() != QtCore.QTime(0, 0, 0):
-
-                self.play_button.setEnabled(False)
-                self.stop_button.setEnabled(True)
-                timer = QTimer()
-                self.stop_replaying.connect(lambda: timer.stop())
-                if not self.loop_checkbox.isChecked():
-                    timer.setSingleShot(True)
-                timer.setInterval(self.timeedit.time().msecsSinceStartOfDay())
-                timer.timeout.connect(lambda : Thread(target=self.play_recording).start())
-                timer.start()
-
-            else:
-                Thread(target=self.play_recording).start()
-
-
-    def play_recording(self):
-        mouse.play(self.recorded_events)
-        self.play_button.setEnabled(True)
-        self.start_recording_btt.setEnabled(True)
-
+    def play_recording_button(self):
+        if not self.recorder.get_is_playing() or not self.recorder.get_is_recording():
+            self.recorder.start_playback(self.timeedit.time().msecsSinceStartOfDay(), self.loop_checkbox.isChecked())
 
     def get_mouse_events(self, event):
         self.recorded_events.append(event)
 
-    def save(self):
-        if self.recorded_events:
-            filename = QFileDialog.getSaveFileName(self, qtTrId('SAVE_AS_DIALOG_TITLE'),self.current_recording_name.replace(':', ';'),'*.smrrec')
-            if not filename[0] == '':
-                with open(filename[0], 'wb') as record_file:
-                    pickle.dump(self.recorded_events, record_file)
 
-    def load(self):
-        filename = QFileDialog.getOpenFileName(self, qtTrId('OPEN_DIALOG_TITLE'),'', '*.smrrec')
-        if not filename[0] == '':
-            with open(filename[0], 'rb') as record_file:
-                self.recorded_events = pickle.load(record_file)
-                self.current_recording_name = filename[0].split('/')[-1]
-                self.recording_title_label.setText(qtTrId('CURR_RECORDING_LABEL')+self.current_recording_name)
+    def load_menubar_button(self):
+        self.recorder.load_recording()
+        self.recording_title_label.setText(qtTrId('CURR_RECORDING_LABEL') + self.recorder.get_recording_name())
 
 class KeyConfigWindow(QMainWindow):
     def __init__(self, parent:MainWindow, user_prefs:dict):
@@ -296,7 +265,6 @@ class KeyConfigWindow(QMainWindow):
         stophbox = QHBoxLayout()
         stopreplayhbox = QHBoxLayout()
 
-        #ToDo Fix Translation
         self.start_keys_label = QLabel(self)
         self.start_keys_label.setText(qtTrId('START_RECORDING_KEY_DESC')+self.user_prefs['key_bindings']['start_recording'])
 

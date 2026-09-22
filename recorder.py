@@ -1,19 +1,27 @@
-from PySide6.QtCore import Signal, qtTrId, QDateTime
-from PySide6.QtWidgets import QFileDialog
+import mouse
 import pickle
+from threading import Thread
+
+from PySide6.QtCore import Signal, qtTrId, QDateTime, QTimer
+from PySide6.QtWidgets import QFileDialog
+
+import settings as config
+
 
 class Recorder(object):
     def __init__(self, parent=None):
         self.parent = parent #  Only for File dialogs
-        self.is_recording:bool = False
         self.recorded_events:list = []
         self.recording_name:str = ''
+        self.replay_stopped:Signal = Signal()
+        self.is_recording = False
+        self.is_playing = False
 
     def record(self):
-        self.is_recording = True
+        pass
 
     def stop_recording(self):
-        self.is_recording = False
+        pass
 
     def save_recording(self):
         if self.recorded_events:
@@ -30,14 +38,26 @@ class Recorder(object):
                 self.recorded_events = pickle.load(record_file)
                 self.recording_name = filename[0].split('/')[-1]
 
-    def start_playback(self):
-        pass
+
+    def start_playback(self, delay:int = 0, loop:bool = False):
+        timer = QTimer()
+        timer.setSingleShot(not loop)
+        timer.setInterval(delay)
+        timer.timeout.connect(lambda: Thread(mouse.play(self.recorded_events)).start())
+        timer.start()
+        self.is_playing = True
 
     def stop_playback(self):
-        pass
+        self.replay_stopped.emit()
 
     def get_recorded_events(self) -> list:
         return self.recorded_events
 
     def get_recording_name(self) -> str:
         return self.recording_name
+
+    def get_is_playing(self) -> bool:
+        return self.is_playing
+
+    def get_is_recording(self) -> bool:
+        return self.is_recording
