@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (QMainWindow, QLabel, QMessageBox, QApplication, Q
                                QVBoxLayout, QPushButton, QWidget, QCheckBox, QTimeEdit, QFileDialog)
 
 import settings as config
-
+from recorder import Recorder
 
 #ToDo: Clean up this code. All recorder logic should be in recorder.py
 class MainWindow(QMainWindow):
@@ -21,6 +21,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.app = app
         self.settings = config.Settings()
+        self.recorder = Recorder()
         self.user_prefs = self.settings.get_all_settings()
         self.keys_window = None
         self.setWindowTitle('Simple Mouse Recorder')
