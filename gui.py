@@ -1,22 +1,17 @@
 import threading
-import pickle
 from threading import Thread
 
 import keyboard
-import mouse
-from PySide6 import QtCore
-from PySide6.QtCore import Qt, QTranslator, QLocale, QTimer, QDateTime, Signal, qtTrId
+from PySide6.QtCore import Qt, QTranslator, qtTrId
 from PySide6.QtGui import QActionGroup
 from PySide6.QtWidgets import (QMainWindow, QLabel, QMessageBox, QApplication, QHBoxLayout,
-                               QVBoxLayout, QPushButton, QWidget, QCheckBox, QTimeEdit, QFileDialog)
+                               QVBoxLayout, QPushButton, QWidget, QCheckBox, QTimeEdit)
 
-import recorder
 import settings as config
 from recorder import Recorder
 
-#ToDo: Clean up this code. All recorder logic should be in recorder.py
+
 class MainWindow(QMainWindow):
-    stop_replaying = Signal() # That's definitely bad
     def __init__(self, app: QApplication):
 
         super().__init__()
@@ -27,9 +22,6 @@ class MainWindow(QMainWindow):
         self.keys_window = None
         self.setWindowTitle('Simple Mouse Recorder')
         self.setFixedSize(320,200)
-        self.recorded_events = []
-        self.current_recording_name = None
-        self.is_recording = False
 
         translator = QTranslator(self.app)
 
@@ -48,9 +40,9 @@ class MainWindow(QMainWindow):
         self.theme_action_group.setExclusive(True)
         theme_menu = settings.addMenu(qtTrId('THEME_MENUBAR'))
 
-        keyboard.add_hotkey(self.user_prefs['key_bindings']['start_recording'], lambda: self.start_recording())
-        keyboard.add_hotkey(self.user_prefs['key_bindings']['stop_recording'], lambda: self.stop_recording())
-        keyboard.add_hotkey(self.user_prefs['key_bindings']['stop_replay'], lambda: self.stop_replay())
+        keyboard.add_hotkey(self.user_prefs['key_bindings']['start_recording'], lambda: self.start_recording_button())
+        keyboard.add_hotkey(self.user_prefs['key_bindings']['stop_recording'], lambda: self.stop_recording_button())
+        keyboard.add_hotkey(self.user_prefs['key_bindings']['stop_replay'], lambda: self.stop_playback_button())
 
         save = file.addAction(qtTrId('SAVE_MENUBAR'))
         save.triggered.connect(self.recorder.save_recording)
@@ -105,7 +97,7 @@ class MainWindow(QMainWindow):
         sos = settings.addAction(qtTrId('SOS_MENUBAR'))
         sos.setCheckable(True)
         sos.setChecked(self.user_prefs['general']['save_on_stop'])
-        sos.triggered.connect(self.save_on_stop)
+        sos.triggered.connect(self.save_on_stop_checkbox)
 
         settings.addSeparator()
 
@@ -138,9 +130,9 @@ class MainWindow(QMainWindow):
 
         self.record_btt_hbox = QHBoxLayout()
         self.start_recording_btt = QPushButton(qtTrId('START_RECORDING_BTT'))
-        self.start_recording_btt.clicked.connect(self.start_recording)
+        self.start_recording_btt.clicked.connect(self.start_recording_button)
         self.stop_recording_btt = QPushButton(qtTrId('STOP_RECORDING_BTT'))
-        self.stop_recording_btt.clicked.connect(self.stop_recording)
+        self.stop_recording_btt.clicked.connect(self.stop_recording_button)
         self.stop_recording_btt.setEnabled(False)
 
         self.record_btt_hbox.addWidget(self.start_recording_btt)
@@ -153,8 +145,7 @@ class MainWindow(QMainWindow):
 
         self.stop_button_hbox = QHBoxLayout()
         self.stop_button = QPushButton(qtTrId('STOP_REPLAYING_BTT'))
-        self.stop_button.setEnabled(False)
-        self.stop_button.clicked.connect(self.stop_replay)
+        self.stop_button.clicked.connect(self.stop_playback_button)
         self.stop_button_hbox.addWidget(self.stop_button)
 
         self.curr_rt_hbox = QHBoxLayout()
@@ -170,11 +161,6 @@ class MainWindow(QMainWindow):
 
         self.apply_theme(save_prefs=False)
         self.show()
-
-    def stop_replay(self):
-        self.play_button.setEnabled(True)
-        self.stop_button.setEnabled(False)
-        self.stop_replaying.emit()
 
 
     def apply_theme(self, save_prefs: bool = True):
@@ -198,7 +184,7 @@ class MainWindow(QMainWindow):
             self.settings.save_settings(self.user_prefs)
         QMessageBox.information(self,qtTrId('LANG_CHANGED_TITLE'),qtTrId('LANG_CHANGED_DESCRIPTION'))
 
-    def save_on_stop(self):
+    def save_on_stop_checkbox(self):
         self.user_prefs['general']['save_on_stop'] = False
         self.settings.save_settings(self.user_prefs)
 
@@ -216,31 +202,31 @@ class MainWindow(QMainWindow):
     def _clear_key_window_reference(self):
         self.keys_window = None
 
-    def start_recording(self):
-        self.recorded_events = []
-        mouse.hook(self.get_mouse_events)
-        self.start_recording_btt.setEnabled(False)
-        self.stop_recording_btt.setEnabled(True)
-        self.play_button.setEnabled(False)
-        self.is_recording = True
+    def start_recording_button(self):
+        if not self.recorder.get_is_recording():
+            self.recorder.record()
+            self.start_recording_btt.setEnabled(False)
+            self.stop_recording_btt.setEnabled(True)
+            self.play_button.setEnabled(False)
 
-    def stop_recording(self):
-        if self.is_recording:
-            mouse.unhook(self.get_mouse_events)
+
+    def stop_recording_button(self):
+        if self.recorder.get_is_recording():
+            self.play_button.setEnabled(True)
             self.start_recording_btt.setEnabled(True)
             self.stop_recording_btt.setEnabled(False)
-            self.play_button.setEnabled(True)
-            self.current_recording_name = 'Recording ' + QDateTime.currentDateTime().toString()
-            self.recording_title_label.setText(qtTrId('CURR_RECORDING_LABEL')+self.current_recording_name)
-            self.is_recording = False
+            self.recorder.stop_recording()
+            self.recording_title_label.setText(qtTrId('CURR_RECORDING_LABEL')+self.recorder.get_recording_name())
+            if self.user_prefs['general']['save_on_stop']:
+                self.recorder.save_recording()
 
     def play_recording_button(self):
         if not self.recorder.get_is_playing() or not self.recorder.get_is_recording():
             self.recorder.start_playback(self.timeedit.time().msecsSinceStartOfDay(), self.loop_checkbox.isChecked())
 
-    def get_mouse_events(self, event):
-        self.recorded_events.append(event)
-
+    def stop_playback_button(self):
+        if self.recorder.get_is_playing():
+            self.recorder.stop_playback()
 
     def load_menubar_button(self):
         self.recorder.load_recording()
@@ -347,13 +333,13 @@ class KeyConfigWindow(QMainWindow):
 
         if clicked_btt == 'btt_start':
             self.user_prefs['key_bindings']['start_recording'] = hotkey
-            keyboard.add_hotkey(self.user_prefs['key_bindings']['start_recording'], self.parent.start_recording)
+            keyboard.add_hotkey(self.user_prefs['key_bindings']['start_recording'], lambda: self.parent.start_recording_button())
         elif clicked_btt == 'btt_stop':
             self.user_prefs['key_bindings']['stop_recording'] = hotkey
-            keyboard.add_hotkey(self.user_prefs['key_bindings']['stop_recording'], self.parent.stop_recording)
+            keyboard.add_hotkey(self.user_prefs['key_bindings']['stop_recording'], lambda: self.parent.stop_recording_button())
         elif clicked_btt == 'btt_stop_replay':
             self.user_prefs['key_bindings']['stop_replay'] = hotkey
-            keyboard.add_hotkey(self.user_prefs['key_bindings']['stop_replay'], self.parent.stop_replay)
+            keyboard.add_hotkey(self.user_prefs['key_bindings']['stop_replay'], lambda: self.parent.stop_playback_button())
 
         self.parent.user_prefs = self.user_prefs
         self.parent.settings.save_settings(self.user_prefs)
